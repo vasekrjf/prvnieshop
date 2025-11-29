@@ -1,4 +1,3 @@
-# Oprava pro Netlify API
 [build]
   command = "npm run build"
   publish = ".next"
