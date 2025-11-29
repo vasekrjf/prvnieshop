@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
+// Inicializace Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   typescript: true,
 });
@@ -13,39 +14,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Košík je prázdný" }, { status: 400 });
     }
 
+    // 1. Převedeme položky z košíku na formát pro Stripe
     const lineItems = items.map((item: any) => ({
       price_data: {
         currency: "czk",
         product_data: {
           name: item.name,
-          images: item.img ? [item.img] : [],
+          images: item.img ? [item.img] : [], // Pokud máš obrázky
         },
-        unit_amount: Math.round(item.price * 100),
+        unit_amount: Math.round(item.price * 100), // Cena v haléřích
       },
       quantity: item.quantity,
     }));
 
-    // --- ZMĚNA ZDE ---
-    // Vytvoříme zjednodušený seznam pro uložení do metadat (Stripe má limit na délku metadat)
-    const cartMetadata = items.map((item: any) => `${item.quantity}x ${item.name} (${item.id})`).join(", ");
+    // 2. Vytvoříme metadata (seznam zboží jako text pro uložení do DB)
+    const cartMetadata = items
+      .map((item: any) => `${item.quantity}x ${item.name}`)
+      .join(", ");
 
+    // 3. Vytvoříme Stripe Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
+      
+      // Nutné pro osobní odběr (chceme fakturační údaje, ne doručovací)
       billing_address_collection: "required",
       shipping_address_collection: undefined,
-      
-      // Tady si uložíme data o objednávce "do kapsy" té transakce
+
+      // Uložíme si seznam zboží "do kapsy" transakce
       metadata: {
-        order_items: cartMetadata, // Uložíme si seznam věcí
-        // Můžeš sem přidat i ID uživatele, pokud bys měl přihlašování
+        order_items: cartMetadata.substring(0, 500), // Ořízneme, kdyby to bylo moc dlouhé
       },
 
       custom_text: {
         submit: { message: "Zaplatit a vyzvednout" },
       },
-      // Do URL přidáme {CHECKOUT_SESSION_ID}, abychom ji mohli na Success stránce přečíst
+
+      // Přesměrování
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/`,
     });

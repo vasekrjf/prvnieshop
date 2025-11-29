@@ -1,8 +1,9 @@
-// next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-    output: 'export', 
+    // ❌ TENTO ŘÁDEK TU NESMÍ BÝT AKTIVNÍ:
+    // output: 'export', 
+    
     images: {
         unoptimized: true, 
         remotePatterns: [
@@ -17,3 +18,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+// Tady jsem přidal komentář pro vynucení aktualizace na Netlify
